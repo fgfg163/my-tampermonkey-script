@@ -6,7 +6,7 @@
 // @author       fgfg163
 // @require      https://cdn.jsdelivr.net/npm/xe-clipboard@1.10.2/dist/xe-clipboard.umd.min.js
 // @match        https://live.bilibili.com/p/eden/area-tags
-// @icon         https://www.google.com/s2/favicons?domain=bilibili.com
+// @icon         https://www.bilibili.com/favicon.ico
 // @grant        none
 // ==/UserScript==
 
