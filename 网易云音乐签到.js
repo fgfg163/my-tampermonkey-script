@@ -6,7 +6,7 @@
 // @author       fgfg163
 // @run-at       document-end
 // @match        https://music.163.com/
-// @icon         https://music.163.com/favicon.ico
+// @icon         https://s1.music.126.net/style/favicon.ico
 // @grant        none
 // ==/UserScript==
 
