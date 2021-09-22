@@ -57,8 +57,9 @@ const sleepPromise = (ms) => new Promise((r) => setTimeout(r, ms));
 (async function() {
     'use strict';
 
-    const avatar = await onDomFound(document.body, 'div:not(.mini-move) > .bili-avatar > .bili-avatar-img', 10000);
+    const avatar = await onDomFound(document.body, 'div:not(.mini-move) > .bili-avatar > .bili-avatar-img[src]', 10000);
+    console.log(avatar)
     avatar.click();
-    sleepPromise(10);
+    sleepPromise(100);
     document.body.click();
 })();
