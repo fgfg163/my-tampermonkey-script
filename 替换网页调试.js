@@ -90,6 +90,14 @@ window.stop();
     }
 
 
+    function runAtUser(fn, params) {
+        const s = document.createElement('script');
+        s.innerHTML = ';(' + fn.toString().replace(/\n/g, '').replace(/s{4,}/g, '') + ')(' + params.map(i => JSON.stringify(i)).join(', ') + ');'
+        originAppendChild.call(document.head, s);
+        document.head.removeChild(s);
+    }
+
+
     // 获取 style/link 的资源，以内联脚本的形式获取
     function getStyle(element, newSrc) {
         let newElement = element;
@@ -258,48 +266,47 @@ window.stop();
     // WebSocket 对象必须在页面的 script 标签中注入
     // 在此脚本中直接修改 window.WebSocket 会被覆盖回去
     // function W 会转换成字符串注入页面，因此不能随意使用脚本里的变量
-    (() => {
-        function WS(originWebSocket, proxyHost) {
-            return function WebSocket(url, protocols) {
+    runAtUser(function(proxyHost) {
+        const originWebSocket = window.WebSocket;
+        if(window.WebSocket.toString().includes("[native code]")){
+            window.WebSocket = function WebSocket(...args) {
+                const url = args[0];
                 const theUrl = new URL(url, window.location.href);
                 if (theUrl.pathname === '/sockjs-node') {
                     const proxyUrl = new URL(proxyHost, window.location.href);
                     theUrl.host = proxyUrl.host;
-                    return new originWebSocket(theUrl.href, protocols);
+                    args[0] = theUrl.href;
+                    return new originWebSocket(...args);
                 }
-                return new originWebSocket(url, protocols);
+                return new originWebSocket(...args);
             };
         };
-        const s = document.createElement('script');
-        s.innerHTML = 'window.WebSocket = (' + WS.toString() + ')(window.WebSocket, ' + JSON.stringify(proxyHost) + ');';
-        originAppendChild.call(document.head, s);
-        document.head.removeChild(s);
-    })();
+    }, [proxyHost]);
 
     // 监听 Worker 对象，
-    (() => {
-        function W(originWorker, proxyHost) {
-            function crosOriginWorker(url, options) {
+    runAtUser(function(proxyHost) {
+        const originWorker = window.Worker;
+        if(window.Worker.toString().includes("[native code]")){
+            function crosOriginWorker(...args) {
+                const url = args[0];
                 const content = 'importScripts(' + JSON.stringify(url) + ');';
                 const workerUrlData = URL.createObjectURL(new Blob([ content ], { type: 'text/javascript' }));
-                const worker = new originWorker(workerUrlData, options);
+                args[0] = workerUrlData;
+                const worker = new originWorker(...args);
                 URL.revokeObjectURL(workerUrlData);
                 return worker;
             };
-
-            return function Worker(url, options) {
+            window.Worker = function Worker(...args) {
+                const url = args[0];
                 const theUrl = new URL(url.toString(), proxyHost);
+                args[0] = theUrl.href;
                 if (theUrl.origin !== window.location.origin) {
-                    return crosOriginWorker(theUrl.href, options);
+                    return crosOriginWorker(...args);
                 }
-                return new originWorker(theUrl.href, options);
+                return new originWorker(...args);
             };
-        };
-        const s = document.createElement('script');
-        s.innerHTML = 'window.Worker = (' + W.toString() + ')(window.Worker, ' + JSON.stringify(proxyHost) + ');';
-        originAppendChild.call(document.head, s);
-        document.head.removeChild(s);
-    })();
+        }
+    }, [proxyHost]);
 
     // 替换掉html中的link
     fragment.querySelectorAll('link[href]').forEach((dom) => {
