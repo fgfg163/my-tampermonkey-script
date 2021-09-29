@@ -302,7 +302,7 @@ window.stop();
     })();
 
     // 替换掉html中的link
-    fragment.querySelectorAll('link[rel="stylesheet"][type="text/css"][href]').forEach((dom) => {
+    fragment.querySelectorAll('link[href]').forEach((dom) => {
         const src = dom.getAttribute('href');
         if (src) {
             const newSrc = new URL(src, proxyHost).href;
