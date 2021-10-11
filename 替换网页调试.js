@@ -4,9 +4,9 @@
 // @version      0.1
 // @description  try to take over the world!
 // @author       fgfg163
-// @match        https://www.baidu.com/*
-// @match        http://www.test-ipv6.com/
+// @match        *://www.test-ipv6.com/*
 // @connect      baidu.com
+// @connect      bdstatic.com
 // @connect      *
 // @connect      www.test-ipv6.com
 // @icon         https://www.test-ipv6.com/images/favicon.ico
@@ -23,7 +23,7 @@ window.stop();
     'use strict';
     // 总体代理地址
     // 地址可以写在 localStorage 里
-    const proxyHost = localStorage.getItem('proxyHost') || 'https://www.test-ipv6.com/';
+    const proxyHost = localStorage.getItem('proxyHost') || 'https://www.baidu.com/';
 
     // 临时attribute名称，用于保存数据
     const templateName = 'alsdflnqlhgpoieorho';
@@ -98,6 +98,56 @@ window.stop();
     }
 
 
+    async function getImgBase64(src, forceBase64){
+        const srcUrl = new URL(src, window.location.href);
+        if(forceBase64 || (isHttps && srcUrl.protocol !== 'https:')) {
+            const srcData = await GM_xmlhttpRequestProxy(src, { responseType: 'blob' })
+            .then(res => blobToBase64(res.response));
+            return srcData;
+        }
+        return '';
+    }
+
+    function getImg(element, newSrc, forceBase64) {
+        if (element.tagName === 'IMG') {
+            const attrSrc = element.getAttribute('src')
+            const src = newSrc || attrSrc;
+            const srcUrl = new URL(src, window.location.href);
+            if(forceBase64 || (isHttps && srcUrl.protocol !== 'https:')) {
+                getImgBase64(src, forceBase64)
+                    .then((res) => {
+                    if (attrSrc !== src || attrSrc === element.getAttribute('src')) {
+                        element.src = res;
+                    }
+                });
+            }
+            element.src = newSrc;
+        }
+    }
+
+    async function replaceStyleUrl(cssText, src){
+        if (cssText) {
+            if(/url\(.*?\)/.test(cssText)){
+                let mList = cssText.match(/url\(.*?\)/g);
+                await Promise.all(mList.map(async (item) => {
+                    try {
+                        const urlMatch = item.match(/url\((.*?)\)/)[1]?.replace(/^"/, '').replace(/^'/, '').replace(/"$/, '').replace(/'$/, '');
+                        if(urlMatch && !startWith(urlMatch, 'http') && !startWith(urlMatch, 'data:image')){
+                            const newUrl = new URL(urlMatch, src).href;
+                            const newUrlData = await getImgBase64(newUrl, true);
+                            console.log(src, urlMatch, newUrl, newUrlData)
+                            cssText = cssText.replace(item, 'url(' + newUrlData + ')');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }));
+            }
+        }
+        return cssText;
+    }
+
+
     // 获取 style/link 的资源，以内联脚本的形式获取
     function getStyle(element, newSrc) {
         let newElement = element;
@@ -111,9 +161,9 @@ window.stop();
             newElement.rel = 'stylesheet';
             newElement.setAttribute('data-href-' + templateName, src);
             newElementPromise = (async () => {
-                const scriptText = await GM_xmlhttpRequestProxy(src).then(res => res.text()).catch(() => undefined);
-                if (scriptText) {
-                    newElement.innerHTML = scriptText;
+                let cssText = await GM_xmlhttpRequestProxy(src).then(res => res.text()).catch(() => undefined);
+                if (cssText) {
+                    newElement.innerHTML = await replaceStyleUrl(cssText, src);
                 }
                 return newElement;
             })();
@@ -149,25 +199,6 @@ window.stop();
         }
 
         return newElementPromise;
-    }
-
-
-    function getImg(element, newSrc) {
-        if (element.tagName === 'IMG') {
-            const attrSrc = element.getAttribute('src')
-            const src = newSrc || attrSrc;
-            const srcUrl = new URL(src, window.location.href);
-            if(isHttps && srcUrl.protocol !== 'https:') {
-                GM_xmlhttpRequestProxy(src, { responseType: 'blob' })
-                    .then(res => blobToBase64(res.response))
-                    .then((res) => {
-                    if (attrSrc !== src || attrSrc === element.getAttribute('src')) {
-                        element.src = res;
-                    }
-                });
-            }
-            element.src = newSrc;
-        }
     }
 
 
@@ -308,6 +339,7 @@ window.stop();
         }
     }, [proxyHost]);
 
+
     // 替换掉html中的link
     fragment.querySelectorAll('link[href]').forEach((dom) => {
         const src = dom.getAttribute('href');
@@ -426,9 +458,17 @@ window.stop();
     })();
 
 
+    // 载入内部样式中的url
+    document.querySelectorAll('style[type="text/css"]').forEach(async (oldDom) => {
+        oldDom.innerHTML = await replaceStyleUrl(oldDom.innerHTML, proxyHost);
+        console.log(oldDom)
+        console.log(oldDom.innerHTML)
+    });
+
     // 载入外部样式
     document.querySelectorAll('link[rel="stylesheet"][type="text/css"]').forEach(async (oldDom) => {
         const oldSrc = oldDom.getAttribute('href');
+        console.log(oldDom);
         if(oldSrc){
             const newSrc = new URL(oldSrc, proxyHost).href;
             const [newDom] = getStyle(oldDom, newSrc);
@@ -444,8 +484,7 @@ window.stop();
 
     // 载入图片
     fragment.querySelectorAll('img').forEach((dom) => {
-        const oldSrc = dom.getAttribute('src');
-        getImg(oldSrc);
+        getImg(dom);
     });
 
 
