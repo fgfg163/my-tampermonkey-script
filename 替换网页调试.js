@@ -4,11 +4,11 @@
 // @version      0.1
 // @description  try to take over the world!
 // @author       fgfg163
-// @match        *://www.test-ipv6.com/*
+// @match        *://www.baidu.com/*
 // @connect      baidu.com
 // @connect      bdstatic.com
 // @connect      *
-// @connect      www.test-ipv6.com
+// @connect      js.ntwikis.com
 // @icon         https://www.test-ipv6.com/images/favicon.ico
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
@@ -23,7 +23,7 @@ window.stop();
     'use strict';
     // 总体代理地址
     // 地址可以写在 localStorage 里
-    const proxyHost = localStorage.getItem('proxyHost') || 'https://www.baidu.com/';
+    const proxyHost = localStorage.getItem('proxyHost') || 'http://js.ntwikis.com/';
 
     // 临时attribute名称，用于保存数据
     const templateName = 'alsdflnqlhgpoieorho';
@@ -80,11 +80,14 @@ window.stop();
     }
 
     function blobToBase64(blob) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             let a = new FileReader();
             a.onload = function (e) {
                 resolve(e.target.result);
             }
+            a.onerror = function (e) {
+                reject(e);
+            };
             a.readAsDataURL(blob);
         });
     }
@@ -100,7 +103,7 @@ window.stop();
 
     async function getImgBase64(src, forceBase64){
         const srcUrl = new URL(src, window.location.href);
-        if(forceBase64 || (isHttps && srcUrl.protocol !== 'https:')) {
+        if (forceBase64 || (isHttps && srcUrl.protocol !== 'https:')) {
             const srcData = await GM_xmlhttpRequestProxy(src, { responseType: 'blob' })
             .then(res => blobToBase64(res.response));
             return srcData;
@@ -113,7 +116,7 @@ window.stop();
             const attrSrc = element.getAttribute('src')
             const src = newSrc || attrSrc;
             const srcUrl = new URL(src, window.location.href);
-            if(forceBase64 || (isHttps && srcUrl.protocol !== 'https:')) {
+            if (forceBase64 || (isHttps && srcUrl.protocol !== 'https:')) {
                 getImgBase64(src, forceBase64)
                     .then((res) => {
                     if (attrSrc !== src || attrSrc === element.getAttribute('src')) {
@@ -121,21 +124,20 @@ window.stop();
                     }
                 });
             }
-            element.src = newSrc;
+            element.src = src;
         }
     }
 
     async function replaceStyleUrl(cssText, src){
         if (cssText) {
-            if(/url\(.*?\)/.test(cssText)){
+            if (/url\(.*?\)/.test(cssText)){
                 let mList = cssText.match(/url\(.*?\)/g);
                 await Promise.all(mList.map(async (item) => {
                     try {
                         const urlMatch = item.match(/url\((.*?)\)/)[1]?.replace(/^"/, '').replace(/^'/, '').replace(/"$/, '').replace(/'$/, '');
-                        if(urlMatch && !startWith(urlMatch, 'http') && !startWith(urlMatch, 'data:image')){
+                        if (urlMatch && !startWith(urlMatch, 'http') && !startWith(urlMatch, 'data:image')){
                             const newUrl = new URL(urlMatch, src).href;
-                            const newUrlData = await getImgBase64(newUrl, true);
-                            console.log(src, urlMatch, newUrl, newUrlData)
+                            const newUrlData = await getImgBase64(newUrl);
                             cssText = cssText.replace(item, 'url(' + newUrlData + ')');
                         }
                     } catch (err) {
@@ -208,7 +210,7 @@ window.stop();
         const element = args[0];
         let newArgs = Array.from(args);
         if (element.tagName === 'SCRIPT') {
-            if(element.getAttribute('src')){
+            if (element.getAttribute('src')){
                 const newSrc = new URL(element.getAttribute('src'), proxyHost).href;
                 element.src = newSrc;
                 const newElementPromise = getScript(element, newSrc);
@@ -220,7 +222,7 @@ window.stop();
                     element.setAttribute('data-src-' + templateName, newSrc);
                     element.removeAttribute('src');
                     newElementPromise.then((newElement) => {
-                        if(placeholder.parentNode) {
+                        if (placeholder.parentNode) {
                             originAppendChild.call(placeholder.parentNode, newElement, placeholder);
                             placeholder.parentNode.removeChild(placeholder);
                         } else {
@@ -249,9 +251,9 @@ window.stop();
     // 按顺序加载 script 标签
     async function loadScripts(srcElementObjList) {
         for (let [element, newElementPromise] of srcElementObjList) {
-            if(element.tagName === 'SCRIPT') {
+            if (element.tagName === 'SCRIPT') {
                 let newElement = newElementPromise ? (await newElementPromise) : undefined;
-                if(!newElement) {
+                if (!newElement) {
                     newElement = document.createElement(element.tagName);
                     copyAllAttr(element, newElement);
                 }
@@ -259,7 +261,7 @@ window.stop();
                     await new Promise((resolve, reject) => {
                         newElement.addEventListener('load', resolve);
                         element.addEventListener('error', resolve);
-                        if(element.parentNode){
+                        if (element.parentNode){
                             originInsertBefore.call(element.parentNode ,newElement, element);
                             element.parentNode.removeChild(element);
                         } else {
@@ -267,7 +269,7 @@ window.stop();
                         }
                     });
                 } else {
-                    if(element.parentNode){
+                    if (element.parentNode){
                         originInsertBefore.call(element.parentNode ,newElement, element);
                         element.parentNode.removeChild(element);
                     } else {
@@ -299,7 +301,7 @@ window.stop();
     // function W 会转换成字符串注入页面，因此不能随意使用脚本里的变量
     runAtUser(function(proxyHost) {
         const originWebSocket = window.WebSocket;
-        if(window.WebSocket.toString().includes("[native code]")){
+        if (window.WebSocket.toString().includes("[native code]")){
             window.WebSocket = function WebSocket(...args) {
                 const url = args[0];
                 const theUrl = new URL(url, window.location.href);
@@ -317,7 +319,7 @@ window.stop();
     // 监听 Worker 对象，
     runAtUser(function(proxyHost) {
         const originWorker = window.Worker;
-        if(window.Worker.toString().includes("[native code]")){
+        if (window.Worker.toString().includes("[native code]")){
             function crosOriginWorker(...args) {
                 const url = args[0];
                 const content = 'importScripts(' + JSON.stringify(url) + ');';
@@ -344,8 +346,13 @@ window.stop();
     fragment.querySelectorAll('link[href]').forEach((dom) => {
         const src = dom.getAttribute('href');
         if (src) {
-            const newSrc = new URL(src, proxyHost).href;
-            dom.setAttribute('href', newSrc);
+            const newSrcUrl = new URL(src, proxyHost);
+            if (isHttps && newSrcUrl.protocol !== 'https:') {
+                dom.removeAttribute('href');
+                dom.setAttribute('data-href-' + templateName, newSrcUrl.href);
+            } else {
+                dom.setAttribute('href', newSrcUrl.href);
+            }
         }
     });
 
@@ -360,6 +367,7 @@ window.stop();
 
     document.documentElement.innerHTML = fragment.innerHTML;
 
+    await sleepPromise(0);
 
     // 监听元素变化，如果插入图片或者修改图片的url，就劫持url
     (() => {
@@ -389,7 +397,7 @@ window.stop();
                         //                         if (dom.tagName === 'LINK') {
                         //                             if (dom.getAttribute('href')) {
                         //                                 const [newElement, newElementPromise] = getStyle(dom);
-                        //                                 if(newElement !== dom) {
+                        //                                 if (newElement !== dom) {
                         //                                     dom.parentNode && insertAfter.call(dom.parentNode, newElement, dom);
                         //                                 }
                         //                                 newElementPromise.then(() => {
@@ -408,7 +416,7 @@ window.stop();
                         //                             linkList.forEach((linkDom) => {
                         //                                 if (dom.getAttribute('href')) {
                         //                                     const [newElement, newElementPromise] = getStyle(dom);
-                        //                                     if(newElement !== dom) {
+                        //                                     if (newElement !== dom) {
                         //                                         dom.parentNode && insertAfter.call(dom.parentNode, newElement, dom);
                         //                                     }
                         //                                     newElementPromise.then(() => {
@@ -445,6 +453,16 @@ window.stop();
                 else if (mutation.type === 'attributes') {
                     if (mutation.target.tagName === 'IMG' && mutation.attributeName === 'src') {
                         getDomImgData(mutation.target);
+                    } else if (mutation.attributeName === 'style') {
+                        const oldDom = mutation.target;
+                        const oldStyle = oldDom.getAttribute('style');
+                        replaceStyleUrl(oldStyle, proxyHost)
+                            .then((newStyle) => {
+                            const nowStyle = oldDom.getAttribute('style');
+                            if (oldStyle === nowStyle && oldStyle !== newStyle){
+                                oldDom.setAttribute('style', newStyle);
+                            }
+                        });
                     }
                 }
             }
@@ -453,38 +471,55 @@ window.stop();
             attributes: true,
             childList: true,
             subtree: true,
-            attributeFilter: ['src']
+            attributeFilter: ['src', 'style']
         });
     })();
 
 
     // 载入内部样式中的url
     document.querySelectorAll('style[type="text/css"]').forEach(async (oldDom) => {
-        oldDom.innerHTML = await replaceStyleUrl(oldDom.innerHTML, proxyHost);
-        console.log(oldDom)
-        console.log(oldDom.innerHTML)
+        const theType = oldDom.getAttribute('type');
+        if (theType && theType !== 'text/css') return;
+
+        const src = oldDom.getAttribute('data-href-' + templateName) || proxyHost;
+        oldDom.innerHTML = await replaceStyleUrl(oldDom.innerHTML, src);
     });
 
     // 载入外部样式
-    document.querySelectorAll('link[rel="stylesheet"][type="text/css"]').forEach(async (oldDom) => {
-        const oldSrc = oldDom.getAttribute('href');
-        console.log(oldDom);
-        if(oldSrc){
-            const newSrc = new URL(oldSrc, proxyHost).href;
-            const [newDom] = getStyle(oldDom, newSrc);
-            if(newDom !== oldDom && oldDom.parentNode) {
-                originAppendChild.call(oldDom.parentNode, newDom, oldDom);
-                oldDom.parentNode.removeChild(oldDom);
-            } else {
-                originAppendChild.call(document.head, newDom);
+    document.querySelectorAll('link[rel="stylesheet"]').forEach(async (oldDom) => {
+        const theType = oldDom.getAttribute('type');
+        if (theType && theType !== 'text/css') return;
+
+        const oldSrc = oldDom.getAttribute('data-href-' + templateName) || oldDom.getAttribute('href');
+        if (oldSrc){
+            const newSrcUrl = new URL(oldSrc, proxyHost);
+            if (isHttps && newSrcUrl.protocol !== 'https:') {
+                const [newDom] = getStyle(oldDom, newSrcUrl.href);
+                if (newDom !== oldDom && oldDom.parentNode) {
+                    originAppendChild.call(oldDom.parentNode, newDom, oldDom);
+                    oldDom.parentNode.removeChild(oldDom);
+                } else {
+                    originAppendChild.call(document.head, newDom);
+                }
             }
         }
     });
 
 
     // 载入图片
-    fragment.querySelectorAll('img').forEach((dom) => {
+    document.querySelectorAll('img').forEach((dom) => {
         getImg(dom);
+    });
+
+    document.querySelectorAll('*[style]').forEach((dom) => {
+        const oldStyle = dom.getAttribute('style');
+        replaceStyleUrl(oldStyle, proxyHost)
+            .then((newStyle) => {
+            const nowStyle = dom.getAttribute('style');
+            if (oldStyle === nowStyle && oldStyle !== newStyle){
+                dom.setAttribute('style', newStyle);
+            }
+        });
     });
 
 
