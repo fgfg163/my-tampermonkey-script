@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自动跳过华为路由升级
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  try to take over the world!
 // @author       fgfg163
 // @run-at       document-idle
@@ -33,11 +33,17 @@
         }, 0)
     }
 
+    var showTimeDiv = document.createElement('div');
+    showTimeDiv.style = 'display:block !important;';
+    showTimeDiv.innerHTML = (new Date()).toString();
+    document.body.appendChild(showTimeDiv);
+
     if (window.location.href.indexOf('randid=') > -1 || Date.now() - getRunDate() > 3600000) {
+        showTimeDiv.innerHTML = (new Date()).toString();
         runIgnore();
     } else {
         setInterval(function () {
-            console.log(Date.now());
+            showTimeDiv.innerHTML = (new Date()).toString();
             if (Date.now() - getRunDate() > 3600000) {
                 runIgnore();
             }
