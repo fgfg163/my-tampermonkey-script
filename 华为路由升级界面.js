@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         华为路由升级界面
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  try to take over the world!
 // @author       fgfg163
 // @run-at       document-body
@@ -23,7 +23,7 @@
     div.onclick = function() {
         window.EMUI.upgradeRedirectIgnor.redirectIgnor();
     };
-    div.style = 'cursor:pointer;display:block !important;width:100vw;height:100vh;text-align:center;line-height:50vh;';
+    div.style = 'cursor:pointer;display:block !important;width:50vw;height:50vh;text-align:center;line-height:50vh;';
     div.innerText = '稍后提醒';
     document.body.appendChild(div);
 })();
