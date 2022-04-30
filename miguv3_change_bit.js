@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         miguv3 change bit
+// @name         咪咕音乐切换音源
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  try to take over the world!
@@ -58,5 +58,5 @@ const onDomFound = (() => {
 (async function() {
     'use strict';
     const btn = await onDomFound(document.body, '.bit-list .bit-item:nth-of-type(1)', 10000);
-    console.log(btn);
+    btn.click();
 })();
