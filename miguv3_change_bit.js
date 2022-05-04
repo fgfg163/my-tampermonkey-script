@@ -57,6 +57,13 @@ const onDomFound = (() => {
 
 (async function() {
     'use strict';
-    const btn = await onDomFound(document.body, '.bit-list .bit-item:nth-of-type(1)', 10000);
-    btn.click();
+    const audioDom = await onDomFound(document.body, '#migu_audio', 10000);
+    if (audioDom.paused){
+        const clickHandle = async () => {
+            audioDom.removeEventListener('playing', clickHandle);
+            const btn = await onDomFound(document.body, '.bit-list .bit-item:nth-of-type(1)', 10000);
+            btn.click();
+        };
+        audioDom.addEventListener('playing', clickHandle);
+    }
 })();
