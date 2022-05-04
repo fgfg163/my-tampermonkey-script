@@ -65,5 +65,8 @@ const onDomFound = (() => {
             btn.click();
         };
         audioDom.addEventListener('playing', clickHandle);
+    } else {
+        const btn = await onDomFound(document.body, '.bit-list .bit-item:nth-of-type(1)', 10000);
+        btn.click();
     }
 })();
